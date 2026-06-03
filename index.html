@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Eldritch Spells — Gesture Magic</title>
+  <meta name="description" content="Cast Doctor Strange-style magic spells in real-time using your webcam and hand gestures. No install needed.">
+  <meta name="theme-color" content="#050409">
+
+  <!-- Open Graph / Social sharing -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Eldritch Spells — Gesture Magic">
+  <meta property="og:description" content="Cast Doctor Strange-style spells with your hands. Real-time webcam hand tracking + magical particle effects.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Eldritch Spells — Gesture Magic">
+  <meta name="twitter:description" content="Cast Doctor Strange-style spells with your hands. Real-time webcam hand tracking + magical particle effects.">
+
+  <!-- Inline SVG favicon (portal ring icon) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='none' stroke='%23ff6a00' stroke-width='5'/><circle cx='50' cy='50' r='28' fill='none' stroke='%23ff6a00' stroke-width='2.5' stroke-dasharray='8 5'/><circle cx='50' cy='50' r='9' fill='%23ff6a00'/></svg>">
+
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Loading Portal Screen -->
+  <div id="loading_overlay">
+    <div class="portal-loader">
+      <div class="portal-inner-eye"></div>
+    </div>
+    <div class="loading-text-container">
+      <div class="loading-title">Eldritch Spells</div>
+      <div class="loading-status" id="loading_status">Communing with the Mystic Arts...</div>
+    </div>
+  </div>
+
+  <!-- Screen Flash Effect for Snapshots -->
+  <div id="flash_effect" class="flash-effect"></div>
+
+  <!-- App Header Title (Pointer events none except children) -->
+  <header>
+    <div class="logo-container">
+      <div class="logo-icon"></div>
+      <h1>Eldritch Spells</h1>
+    </div>
+    <button id="sidebar-toggle" aria-label="Toggle spell panel" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <!-- Main Webpage Viewport -->
+  <main>
+    <div class="viewport-container">
+      <!-- Raw Webcam video stream -->
+      <video id="webcam" autoplay playsinline muted></video>
+      <!-- Magical Drawing Layer -->
+      <canvas id="output_canvas"></canvas>
+    </div>
+
+    <!-- Floating Help Instructions -->
+    <div id="spell_instruction" class="glass-panel">
+      Raise your hand in front of the webcam to begin casting.
+    </div>
+
+    <!-- FPS Performance Indicator -->
+    <div id="fps_counter">FPS: -- | Hands: 0</div>
+  </main>
+
+  <!-- Glassmorphic Controls Panel (Spellbook Sidebar) -->
+  <aside id="control_sidebar" class="glass-panel">
+    
+    <!-- Spell Selector Section -->
+    <div class="sidebar-section">
+      <div class="section-title">
+        <span>Select Spell</span>
+        <span>✨</span>
+      </div>
+      <div class="spell-grid">
+        <button class="spell-btn active" data-spell="shield">
+          <span style="font-size: 1.5rem; margin-bottom: 2px;">🛡️</span>
+          <span>Eldritch Shield</span>
+        </button>
+        <button class="spell-btn" data-spell="draw">
+          <span style="font-size: 1.5rem; margin-bottom: 2px;">✏️</span>
+          <span>Spell Caster</span>
+        </button>
+        <button class="spell-btn" data-spell="portal">
+          <span style="font-size: 1.5rem; margin-bottom: 2px;">🌀</span>
+          <span>Sling Portal</span>
+        </button>
+        <button class="spell-btn" data-spell="sparkles">
+          <span style="font-size: 1.5rem; margin-bottom: 2px;">✨</span>
+          <span>Cosmic Sparks</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Spell Colors Section -->
+    <div class="sidebar-section">
+      <div class="section-title">
+        <span>Mystic Glow Color</span>
+        <span>🎨</span>
+      </div>
+      <div class="theme-selector">
+        <div class="theme-dot orange active" data-theme="orange" title="Eldritch Orange"></div>
+        <div class="theme-dot crimson" data-theme="crimson" title="Crimson Fire"></div>
+        <div class="theme-dot blue" data-theme="blue" title="Astral Blue"></div>
+        <div class="theme-dot purple" data-theme="purple" title="Mirror Purple"></div>
+      </div>
+    </div>
+
+    <!-- Customization Parameters Section -->
+    <div class="sidebar-section">
+      <div class="section-title">
+        <span>Spell Controls</span>
+        <span>⚙️</span>
+      </div>
+      
+      <!-- Parameter Sliders -->
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Shield Size / Line Width</span>
+          <span class="val" id="val_size">1.0x</span>
+        </div>
+        <input type="range" id="param_size" min="0.5" max="2.0" step="0.1" value="1.0">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Rotation / Speed</span>
+          <span class="val" id="val_speed">1.0x</span>
+        </div>
+        <input type="range" id="param_speed" min="0.2" max="2.5" step="0.1" value="1.0">
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Spark Count</span>
+          <span class="val" id="val_sparks">50%</span>
+        </div>
+        <input type="range" id="param_sparks" min="10" max="100" step="5" value="50">
+      </div>
+    </div>
+
+    <!-- Settings Toggle Section -->
+    <div class="sidebar-section">
+      <div class="section-title">
+        <span>Environment Settings</span>
+        <span>👁️</span>
+      </div>
+
+      <!-- webcam blend -->
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Webcam Visibility</span>
+          <span class="val" id="val_opacity">45%</span>
+        </div>
+        <input type="range" id="param_opacity" min="0" max="100" step="5" value="45">
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Mirror Webcam Feed</span>
+        <label class="switch">
+          <input type="checkbox" id="toggle_mirror" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="control-row">
+        <span class="control-label">Mystic Sound Synth</span>
+        <label class="switch">
+          <input type="checkbox" id="toggle_sound">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Gesture Confidence</span>
+          <span class="val" id="val_confidence">0.5</span>
+        </div>
+        <input type="range" id="param_confidence" min="0.3" max="0.9" step="0.05" value="0.5">
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="sidebar-section" style="margin-top: auto; padding-top: 10px; gap: 10px;">
+      <button id="btn_clear" class="action-btn secondary-btn">
+        <span>🧹</span> Clear Active Magic
+      </button>
+      <button id="btn_snapshot" class="action-btn">
+        <span>📸</span> Capture Spells
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ES6 module containing application scripts -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
