@@ -2,11 +2,11 @@ import { FilesetResolver, HandLandmarker } from "https://cdn.jsdelivr.net/npm/@m
 
 // --- Application State ---
 const state = {
-  activeSpell: 'shield', // 'shield', 'draw', 'portal', 'sparkles'
-  activeTheme: 'orange', // 'orange', 'crimson', 'blue', 'purple'
+  activeSpell: 'sparkles', // 'shield', 'draw', 'portal', 'sparkles'
+  activeTheme: 'orange',  // 'orange', 'crimson', 'blue', 'purple'
   scaleSize: 1.0,
   scaleSpeed: 1.0,
-  sparkDensity: 50,
+  sparkDensity: 70,
   webcamOpacity: 0.45,
   mirrorEnabled: true,
   soundEnabled: false,
@@ -206,7 +206,7 @@ class Particle {
     // Draw 4-point magical spark star
     canvasCtx.fillStyle = colorStr;
     canvasCtx.shadowColor = `rgb(${this.color.r}, ${this.color.g}, ${this.color.b})`;
-    canvasCtx.shadowBlur = this.size * 1.5;
+    canvasCtx.shadowBlur = this.size * 3;
     
     canvasCtx.beginPath();
     const w = this.size;
@@ -549,7 +549,8 @@ function processDrawing(handLandmark) {
 // Draw existing lines on canvas with glowing shadows
 function drawSpellCasterLines() {
   ctx.save();
-  ctx.shadowBlur = 15;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.shadowBlur = 18;
   ctx.lineWidth = 5 * state.scaleSize;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -607,14 +608,17 @@ function updateStrokesAge() {
 function processResults(results) {
   state.handsDetected = results.landmarks ? results.landmarks.length : 0;
   
-  // Clear drawing canvas with a subtle black fade trail
-  // This creates beautiful motion blur trails for particles and magic lines!
-  ctx.fillStyle = 'rgba(5, 4, 9, 0.28)';
+  // Fade canvas to black each frame — creates motion-blur trails.
+  // source-over + low alpha = gradual darkening; 'lighter' for all effects
+  // gives true additive glow that works regardless of canvas alpha state.
   ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = '#050409';
   ctx.fillRect(0, 0, el.canvas.width, el.canvas.height);
-  
-  // Set drawing mode to add glow effects nicely
-  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = 1.0;
+
+  // Additive blend: bright colors on dark background = guaranteed glow visibility
+  ctx.globalCompositeOperation = 'lighter';
   
   // Draw hand-specific magic spells
   if (state.handsDetected > 0) {
@@ -692,20 +696,23 @@ function processResults(results) {
           }
           
         } else if (state.activeSpell === 'sparkles') {
-          // COSMIC SPARKLES MODE
-          // Emit sparks from all 5 fingertips
+          // COSMIC SPARKLES MODE — sparks from all 5 fingertips + palm
           const fingertips = [4, 8, 12, 16, 20];
           const density = state.sparkDensity / 100;
-          
+
           fingertips.forEach((tipIdx) => {
-            if (Math.random() < density * 0.45) {
-              const tip = landmarks[tipIdx];
-              const tx = tip.x * el.canvas.width;
-              const ty = tip.y * el.canvas.height;
-              // Add upward drift
-              spawnSpark(tx, ty, (Math.random() - 0.5) * 1.5, (Math.random() - 0.8) * 2, 0.02, 0.9, 1);
-            }
+            const tip = landmarks[tipIdx];
+            const tx = tip.x * el.canvas.width;
+            const ty = tip.y * el.canvas.height;
+            const count = Math.random() < density ? 2 : 1;
+            spawnSpark(tx, ty, (Math.random() - 0.5) * 2.5, (Math.random() - 0.8) * 3, 0.02, 0.95, count);
           });
+
+          // Extra burst from palm center
+          if (Math.random() < density * 0.5) {
+            spawnSpark(palmCenter.x, palmCenter.y,
+              (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, 0.01, 0.8, 2);
+          }
         }
       }
     }
@@ -743,10 +750,10 @@ function processResults(results) {
 function drawMagicSkeletalGlove(handLandmarks) {
   const color = THEMES[state.activeTheme];
   ctx.save();
-  ctx.shadowBlur = 6;
+  ctx.shadowBlur = 14;
   ctx.shadowColor = color.hex;
-  ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 0.25)`;
-  ctx.lineWidth = 2 * state.scaleSize;
+  ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, 0.75)`;
+  ctx.lineWidth = 2.5 * state.scaleSize;
   
   // Fingertips chains mapping
   const connections = [
@@ -801,8 +808,8 @@ function updateAndDrawParticles() {
   }
   
   // Cap max particles to prevent lagging
-  if (particles.length > 800) {
-    particles.splice(0, particles.length - 800);
+  if (particles.length > 1500) {
+    particles.splice(0, particles.length - 1500);
   }
 }
 
@@ -900,9 +907,11 @@ async function startCamera() {
 }
 
 function resizeCanvas() {
-  // Sync drawing buffer dimensions with CSS layout sizes
-  el.canvas.width = el.canvas.clientWidth;
-  el.canvas.height = el.canvas.clientHeight;
+  el.canvas.width  = el.canvas.clientWidth  || window.innerWidth;
+  el.canvas.height = el.canvas.clientHeight || window.innerHeight;
+  // Fill solid black immediately so 'lighter' composite has a dark base from frame 1
+  ctx.fillStyle = '#050409';
+  ctx.fillRect(0, 0, el.canvas.width, el.canvas.height);
 }
 
 window.addEventListener('resize', resizeCanvas);
